@@ -78,7 +78,8 @@
                     android:layout_margin="5dp"
                     android:paddingStart="5dp"
                     android:paddingEnd="5dp"
-                    android:background="@drawable/round_outline">
+                    android:background="@drawable/round_outline"
+                    android:visibility="gone">
 
                     <TextView
                         android:id="@+id/inputs"
@@ -151,7 +152,8 @@
                     android:layout_margin="5dp"
                     android:paddingStart="5dp"
                     android:paddingEnd="5dp"
-                    android:background="@drawable/round_outline">
+                    android:background="@drawable/round_outline"
+                    android:visibility="gone">
 
                     <TextView
                         android:id="@+id/publish"
@@ -263,7 +265,8 @@
                     android:layout_margin="5dp"
                     android:paddingStart="5dp"
                     android:paddingEnd="5dp"
-                    android:background="@drawable/round_outline">
+                    android:background="@drawable/round_outline"
+                    android:visibility="gone">
 
                     <TextView
                         android:id="@+id/audioRoute"
