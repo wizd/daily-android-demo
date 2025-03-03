@@ -53,6 +53,11 @@ import co.daily.model.RequestListener
 import co.daily.settings.VideoProcessor
 import co.daily.view.VideoView
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import org.json.JSONObject
+import java.net.URL
+import java.util.UUID
+import kotlin.concurrent.thread
+import javax.net.ssl.HttpsURLConnection
 
 private const val TAG = "daily_demo_app"
 
@@ -701,6 +706,49 @@ class MainActivity : AppCompatActivity(), DemoStateListener {
         }
     }
 
+    private fun notifyWebhook(url: String, username: String?) {
+        thread {
+            try {
+                val roomUrl = addurl.text.toString()
+                val urlParts = roomUrl.split("/")
+                val domainName = urlParts[2].split(".")[0]
+                val roomName = urlParts.lastOrNull() ?: "unknown-room"
+                
+                val userId = UUID.randomUUID().toString()
+                val meetingSessionId = UUID.randomUUID().toString()
+                
+                val jsonPayload = JSONObject().apply {
+                    put("domain_name", domainName)
+                    put("room_name", roomName)
+                    put("room_url", roomUrl)
+                    put("user_name", username ?: "Android Demo User")
+                    put("user_id", userId)
+                    put("is_owner", false)
+                    put("owner_is_present", false)
+                    put("first_non_owner_join", true)
+                    put("meeting_session_id", meetingSessionId)
+                }
+
+                val connection = URL(url).openConnection() as HttpsURLConnection
+                connection.requestMethod = "POST"
+                connection.setRequestProperty("Content-Type", "application/json")
+                connection.doOutput = true
+                
+                val outputStream = connection.outputStream
+                outputStream.write(jsonPayload.toString().toByteArray())
+                outputStream.flush()
+                outputStream.close()
+                
+                val responseCode = connection.responseCode
+                Log.i(TAG, "Webhook notification response code: $responseCode")
+                
+                connection.disconnect()
+            } catch (e: Exception) {
+                Log.e(TAG, "Error sending webhook notification", e)
+            }
+        }
+    }
+
     override fun onStateChanged(newState: DemoState) {
         Log.i(TAG, "onCallStateChanged: $newState")
 
@@ -754,6 +802,10 @@ class MainActivity : AppCompatActivity(), DemoStateListener {
                 inCallButtons.visibility = View.VISIBLE
                 urlBar.visibility = View.GONE
                 enableButtonHiding()
+
+                // 当用户成功加入聊天室时，调用webhook
+                val username = usernameInput.text?.toString()?.takeUnless { it.isEmpty() }
+                notifyWebhook("https://gwhook-dev.vcorp.ai/webhook", username)
 
                 if (!triggeredForegroundService) {
 
