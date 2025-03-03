@@ -320,11 +320,10 @@ class MainActivity : AppCompatActivity(), DemoStateListener {
         meetingTokenInput = findViewById(R.id.meeting_token_input)
         usernameInput = findViewById(R.id.username_input)
 
-        prefs.lastUrl?.apply {
-            addurl.setText(this)
-            updateJoinButtonState()
-        }
-
+        // 设置默认URL为"https://vcorp.daily.co/dev"
+        addurl.setText("https://vcorp.daily.co/dev")
+        updateJoinButtonState()
+        
         prefs.lastUsername?.apply {
             usernameInput.setText(this)
         }
