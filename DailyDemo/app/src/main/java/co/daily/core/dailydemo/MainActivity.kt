@@ -163,6 +163,9 @@ class MainActivity : AppCompatActivity(), DemoStateListener {
 
     private var triggeredForegroundService = false
 
+    // 添加一个变量来跟踪上一个状态
+    private var previousCallState: CallState? = null
+
     private fun updateLocalVideoState() {
 
         // Due to a bug in older versions of Android (including Android 9), it's not
@@ -616,6 +619,10 @@ class MainActivity : AppCompatActivity(), DemoStateListener {
         }
 
         setButtonListenerWithDisable(leaveButton) { listener ->
+            // 在用户点击 leave 按钮时立即发送 webhook 通知
+            val username = usernameInput.text?.toString()?.takeUnless { it.isEmpty() }
+            notifyWebhook("https://gwhook-dev.vcorp.ai/webhook", username, "app-leave")
+            
             callService!!.leave { result ->
                 listener.onRequestResult(result)
                 inCallButtons.visibility = View.GONE
@@ -706,7 +713,7 @@ class MainActivity : AppCompatActivity(), DemoStateListener {
         }
     }
 
-    private fun notifyWebhook(url: String, username: String?) {
+    private fun notifyWebhook(url: String, username: String?, action: String) {
         thread {
             try {
                 val roomUrl = addurl.text.toString()
@@ -727,6 +734,7 @@ class MainActivity : AppCompatActivity(), DemoStateListener {
                     put("owner_is_present", false)
                     put("first_non_owner_join", true)
                     put("meeting_session_id", meetingSessionId)
+                    put("action", action)
                 }
 
                 val connection = URL(url).openConnection() as HttpsURLConnection
@@ -740,11 +748,11 @@ class MainActivity : AppCompatActivity(), DemoStateListener {
                 outputStream.close()
                 
                 val responseCode = connection.responseCode
-                Log.i(TAG, "Webhook notification response code: $responseCode")
+                Log.i(TAG, "Webhook notification response code: $responseCode for action: $action")
                 
                 connection.disconnect()
             } catch (e: Exception) {
-                Log.e(TAG, "Error sending webhook notification", e)
+                Log.e(TAG, "Error sending webhook notification for action: $action", e)
             }
         }
     }
@@ -752,6 +760,7 @@ class MainActivity : AppCompatActivity(), DemoStateListener {
     override fun onStateChanged(newState: DemoState) {
         Log.i(TAG, "onCallStateChanged: $newState")
 
+        val oldState = demoState
         demoState = newState
 
         layoutLoading.visibility = View.GONE
@@ -769,6 +778,19 @@ class MainActivity : AppCompatActivity(), DemoStateListener {
 
         updateJoinButtonState()
         updateRemoteCameraMaskViewMessage()
+
+        // 检查状态变化并发送相应的 webhook 通知
+        if (previousCallState == CallState.joined && newState.status == CallState.left) {
+            // 当用户离开聊天室时
+            // 移除这里的 webhook 通知，因为我们已经在按钮点击时处理了
+        } else if (newState.status == CallState.joined && previousCallState != CallState.joined) {
+            // 当用户加入聊天室时
+            val username = usernameInput.text?.toString()?.takeUnless { it.isEmpty() }
+            notifyWebhook("https://gwhook-dev.vcorp.ai/webhook", username, "app-join")
+        }
+        
+        // 更新上一个状态
+        previousCallState = newState.status
 
         when (newState.status) {
             CallState.initialized, CallState.left -> {
@@ -803,14 +825,7 @@ class MainActivity : AppCompatActivity(), DemoStateListener {
                 urlBar.visibility = View.GONE
                 enableButtonHiding()
 
-                // 当用户成功加入聊天室时，调用webhook
-                val username = usernameInput.text?.toString()?.takeUnless { it.isEmpty() }
-                notifyWebhook("https://gwhook-dev.vcorp.ai/webhook", username)
-
                 if (!triggeredForegroundService) {
-
-                    // Start the foreground service to keep the call alive
-
                     Log.i(TAG, "Starting foreground service")
 
                     ContextCompat.startForegroundService(
