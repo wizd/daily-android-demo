@@ -805,9 +805,10 @@ class MainActivity : AppCompatActivity(), DemoStateListener {
                     localVideoToggle.isChecked = true
                 }
                 
-                // 在回到初始状态时重新启用摄像头
+                // 在回到初始状态时重新启用摄像头和麦克风
                 if (oldState?.status == CallState.leaving) {
                     callService?.toggleCamInput(true) { }
+                    callService?.toggleMicInput(true) { }
                 }
 
                 triggeredForegroundService = false
